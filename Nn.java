@@ -1,7 +1,6 @@
-import java.io.*;
-import java.util.*;
-import java.lang.Math;
-import java.sql.Struct;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 class Value{
     double data;
     double grad;
@@ -12,23 +11,27 @@ class Value{
     Set<Value> visited=new HashSet<>();
     Value(double data,String label){
         this.data=data;
-        thus.label=label;
+        this.label=label;
     }
-    Value(double data,String label,)
-    @override
+    Value(double data,ArrayList<Value> children,String label,String op){
+        this.data=data;
+        this.prev=children;
+        this.label=label;
+        this.op=op;
+    }
+    @Override
     public String toString(){
-        return "Value(data) : "+data
+        return "Value(data) : "+data;
     }
     Value Add(Value v){
-        return new Value(this.data+v.data)
+         return new Value(this.data+v.data);
     }
 }
 class Nn{
-    public static void main(String args[])
-    {
-        Value v1=new Value(5);
-        Value v2=new Value(0);
-        Value v3=v1.div(v2);
-        System.out.println(v3);
+    public static void main(String args[]){
+        Value v1=new Value(5.0,"a");
+        Value v2=new Value(2.0,"b");
+        
+        System.out.println(v1.label+" = "+v1.data+";;;"+v2.label+" = "+v2.data);
     }
 }
