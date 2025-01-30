@@ -1,9 +1,11 @@
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Random;
 import java.util.Scanner;
 import java.util.Set;
+
 class Value{
     double data;
     double grad;
@@ -27,7 +29,8 @@ class Value{
     }
     @Override
     public String toString(){
-        return ""+data;
+        DecimalFormat df = new DecimalFormat("##.####"); 
+        return "" + df.format(data);
     }
 
     Value Add(Value v,String label){
@@ -213,7 +216,7 @@ class Nn{
         ArrayList<Value> ypred = new ArrayList<>();
         ArrayList<Value> yact = new ArrayList<>();
         Value loss=new Value(0, null);
-        int d, n;
+        int d, n, cnt=0;
 
         yact.add(new Value(1, null));
         yact.add(new Value(-1, null));
@@ -253,8 +256,10 @@ class Nn{
             for(ArrayList<Value> yi:y){
                 ypred.add(yi.get(0));
             }
-            System.out.println("Predicted_Values -> "+ypred);
-            System.out.println("Target_Values -> "+yact);
+            ++cnt;
+            System.out.println("Epochs:"+cnt);
+            System.out.println("\tPredicted_Values -> "+ypred);
+            System.out.println("\tTarget_Values -> "+yact);
 
             for (int i = 0; i < ypred.size(); i++) {
                 loss=loss.Add((ypred.get(i).Sub(yact.get(i), null).Pow(2, null)),null);
@@ -262,7 +267,7 @@ class Nn{
 
             loss.grad=1;
             loss.reverse();
-            System.out.println("Loss : "+loss);
+            System.out.println("\tLoss : "+loss);
             params=m.Parameters();
             for(Value v:params){
                 v.data+= -0.01*v.grad;
