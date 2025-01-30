@@ -1,5 +1,8 @@
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Random;
+import java.util.Scanner;
 import java.util.Set;
 class Value{
     double data;
@@ -24,7 +27,7 @@ class Value{
     }
     @Override
     public String toString(){
-        return "Value(data) : "+data;
+        return ""+data;
     }
 
     Value Add(Value v,String label){
@@ -56,7 +59,7 @@ class Value{
         double res = (Math.exp(a*2)-1)/(Math.exp(a*2)+1);
         ArrayList<Value> children=new ArrayList<>();
         children.add(this);
-        Value out=new Value(res,children,label,"tanh")
+        Value out=new Value(res,children,label,"tanh");
         return out;
     }
 
@@ -64,7 +67,7 @@ class Value{
         ArrayList<Value> children=new ArrayList<>();
         children.add(this);
         children.add(new Value(b, label));
-        Value out=new Value(Math.pow(this.data, b),children,label,"^")
+        Value out=new Value(Math.pow(this.data, b),children,label,"^");
         return out;
     }
 
@@ -107,6 +110,7 @@ class Value{
             default: break;
         }
     }
+
     void reverse(){
         buildTopo(this);
         for(int i=topo.size()-1;i>=0;i--){
@@ -114,14 +118,164 @@ class Value{
         }
     }
 }
+
 class Neuron{
-    
+    ArrayList<Value> w=new ArrayList<>();
+    Random random = new Random();
+    Value b;
+
+    Neuron(int n) {
+        for (int i = 0; i < n; i++) {
+            double wts=(random.nextDouble() * 2) - 1;
+            this.w.add(new Value(wts,null));
+        }
+        double bias=(random.nextDouble() * 2) - 1;
+        this.b = new Value(bias, null);
+    }
+
+    Value Call(ArrayList<Value> x){
+        Value wixi,out;
+        Value act = new Value(0, null);
+        for (int i = 0; i < this.w.size(); i++) {
+            wixi=this.w.get(i).Mul(x.get(i),null);
+            act = act.Add(wixi, null);
+        }
+        act= act.Add(this.b, null);
+        out = act.Tanh("y");
+        return out;
+    }
+
+    ArrayList<Value> Parameters(){
+        ArrayList<Value> p=new ArrayList<>();
+        p.addAll(this.w);
+        p.add(this.b);
+        return p;
+    } 
+}
+
+class Layer{
+    ArrayList<Neuron> neurons=new ArrayList<>();
+
+    Layer(int nin,int nout) {
+        for (int i = 0; i < nout; i++) {
+            this.neurons.add(new Neuron(nin));
+        }
+    }
+
+    ArrayList<Value> Call(ArrayList<Value> x){
+        ArrayList<Value> outs=new ArrayList<>();
+        for(Neuron neuron:this.neurons){
+            outs.add(neuron.Call(x));
+        }
+        return outs;
+    }
+
+    ArrayList<Value> Parameters(){
+        ArrayList<Value>par= new ArrayList<>();
+        for (Neuron neuron : this.neurons) {
+            par.addAll(neuron.Parameters());
+        }
+        return par;
+
+    }
+}
+
+class MLP{
+    ArrayList<Layer> layers = new ArrayList<>();
+    MLP(int nin,int[] nouts){
+        for (int i = 0; i < nouts.length; i++) {
+            this.layers.add(new Layer(nin, nouts[i]));
+            nin=nouts[i];
+        }
+    }
+
+    ArrayList<Value> Call(ArrayList<Value> x){
+        for (Layer layer : this.layers) {
+                x=layer.Call(x);       
+        }
+        return x;
+    }
+
+    ArrayList<Value> Parameters(){
+        ArrayList<Value>params= new ArrayList<>();
+        for (Layer layer : this.layers) {
+            params.addAll(layer.Parameters());
+        }
+        return params;
+    }
+
 }
 class Nn{
     public static void main(String args[]){
-        Value v1=new Value(5.0,"a");
-        Value v2=new Value(2.0,"b");
+        Scanner sc=new Scanner(System.in);
+        ArrayList<ArrayList<Value>> y=new ArrayList<>();
+        ArrayList<ArrayList<Value>> xall = new ArrayList<>();
+        ArrayList<Value> ypred = new ArrayList<>();
+        ArrayList<Value> yact = new ArrayList<>();
+        Value loss=new Value(0, null);
+        int d, n;
+
+        yact.add(new Value(1, null));
+        yact.add(new Value(-1, null));
+        yact.add(new Value(-1, null));
+        yact.add(new Value(1, null));
+
+        ArrayList<Value> x = new ArrayList<>();
+        x.add(new Value(2.0, "x1"));
+        x.add(new Value(3.0, "x2"));
+        x.add(new Value(-1, "x3"));
+        xall.add(x);
+        x = new ArrayList<>();
+        x.add(new Value(3.0, "x1"));
+        x.add(new Value(-1.0, "x2"));
+        x.add(new Value(0.5, "x3"));
+        xall.add(x);
+        x = new ArrayList<>();
+        x.add(new Value(0.5, "x1"));
+        x.add(new Value(1.0, "x2"));
+        x.add(new Value(1, "x3"));
+        xall.add(x);
+        x = new ArrayList<>();
+        x.add(new Value(1.0, "x1"));
+        x.add(new Value(1.0, "x2"));
+        x.add(new Value(-1, "x3"));
+        xall.add(x);
+
+        int nouts[]={4,4,1};
+        MLP m=new MLP(3,nouts);
         
-        System.out.println(v1.label+" = "+v1.data+";;;"+v2.label+" = "+v2.data);
+        ArrayList<Value> params;
+        int resume=0;
+        do { 
+            for(ArrayList<Value> xi:xall){
+                y.add(m.Call(xi));
+            }
+            for(ArrayList<Value> yi:y){
+                ypred.add(yi.get(0));
+            }
+            System.out.println("Predicted_Values -> "+ypred);
+            System.out.println("Target_Values -> "+yact);
+
+            for (int i = 0; i < ypred.size(); i++) {
+                loss=loss.Add((ypred.get(i).Sub(yact.get(i), null).Pow(2, null)),null);
+            }
+
+            loss.grad=1;
+            loss.reverse();
+            System.out.println("Loss : "+loss);
+            params=m.Parameters();
+            for(Value v:params){
+                v.data+= -0.01*v.grad;
+            }
+            for (Value v : params) {
+                v.grad=0.0;
+            }
+            ypred = new ArrayList<>();
+            y = new ArrayList<>();
+            loss=new Value(0, null);
+            resume=sc.nextInt();
+        } while (resume==1);
+
+        sc.close();
     }
 }
